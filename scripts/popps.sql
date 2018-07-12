@@ -1,3 +1,45 @@
+-- BLOCK: create tables for storing zones and associated states
+DO $$
+DECLARE
+  rcount INTEGER := 0;
+BEGIN
+  -- create zones table
+  CREATE TABLE IF NOT EXISTS zones (
+    , code VARCHAR(2) PRIMARY KEY
+    , name VARCHAR(15) UNIQUE NOT NULL
+  );
+
+  -- create the zone_states table
+  CREATE TABLE IF NOT EXISTS zone_states (
+    , zone_code VARCHAR(2) REFERENCES zones (code)
+    , state_code VARCHAR(2)
+    , PRIMARY KEY (zone_code, state_code)
+  )
+
+  -- insert values into created tables
+  SELECT COUNT(*) INTO rcount FROM zones;
+  IF rcount != 6 THEN
+    TRUNCATE TABLE zones;
+
+    INSERT INTO zones (code, name)
+    VALUES ('NE', 'North East'), ('NW', 'North West'), ('NC', 'North Central'),
+            ('SE', 'South East'), ('SW', 'South West'), ('SS', 'South South');
+  END IF
+
+  SELECT COUNT(*) INTO rcount FROM zone_states;
+  IF rcount != 37 THEN
+    TRUNCATE TABLE zone_states;
+    INSERT INTO zone_states VALUES
+      ('NE', 'AD'), ('NE', 'BA'), ('NE', 'BO'), ('NE', 'GO'), ('NE', 'TA'), ('NE', 'YO'),
+      ('NW', 'JI'), ('NW', 'KD'), ('NW', 'KN'), ('NW', 'KT'), ('NW', 'KB'), ('NW', 'SO'), ('NW', 'ZM'),
+      ('NC', 'BE'), ('NC', 'KO'), ('NC', 'KW'), ('NC', 'NA'), ('NC', 'NI'), ('NC', 'PL'), ('NC', 'FC'),
+      ('SE', 'AB'), ('SE', 'AN'), ('SE', 'EB'), ('SE', 'EN'), ('SE', 'IM'],
+      ('SW', 'EK'), ('SW', 'LG'), ('SW', 'OG'), ('SW', 'ON'), ('SW', 'OS'), ('SW', 'OY'),
+      ('SS', 'AI'), ('SS', 'CR'), ('SS', 'BA'), ('SS', 'RI'), ('SS', 'DE'), ('SS', 'ED');
+  END IF
+END $$;
+
+
 -- VIEW: boundaries
 -- Connects all three admin levels together
 CREATE OR REPLACE VIEW boundaries AS
