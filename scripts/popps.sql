@@ -133,25 +133,17 @@ LANGUAGE 'plpgsql'
 
 -- FUNTION: getZoneWards
 -- Returns list of Ward code for the specified geo-political zone
-CREATE OR REPLACE FUNCTION getZoneWards (zoneName VARCHAR)
+CREATE OR REPLACE FUNCTION getZoneWards (zoneCode VARCHAR)
 RETURN VARCHAR ARRAY AS $$
 DECLARE
-    ZONE_NE VARCHAR ARRAY := ARRAY['AD', 'BA', 'BO', 'GO', 'TA', 'YO'];
-    ZONE_NC VARCHAR ARRAY := ARRAY['BE', 'KO', 'KW', 'NA', 'NI', 'PL', 'FC'];
-    ZONE_NW VARCHAR ARRAY := ARRAY['JI', 'KD', 'KN', 'KT', 'KB', 'SO', 'ZM'];
-    ZONE_SW VARCHAR ARRAY := ARRAY['EK', 'LG', 'OG', 'ON', 'OS', 'OY']
-    ZONE_SS VARCHAR ARRAY := ARRAY['AI', 'CR', 'BA', 'RI', 'DE', 'ED'];
-    ZONE_SE VARCHAR ARRAY := ARRAY['AB', 'AN', 'EB', 'EN', 'IM'];
-    ZONE_RT VARCHAR ARRAY;
+  wards VARCHAR ARRAY;
 BEGIN
-    IF zoneName IN ['NE', 'NC', 'NW', 'SW', 'SS', 'SE'] THEN
-        EXECUTE (
-            'SELECT ward_code FROM boundaries WHERE state_code IN ZONE_' ||
-            zoneName  || ';' INTO ZONE_RT
-        );
-        RETURN ZONE_RT;
-    END IF
-    RETURN [];
+  SELECT ward_code FROM boundaries
+  WHERE state_code IN (
+    SELECT state_code FROM zone_states
+    WHERE zone_code = zoneCode
+  ) INTO wards;
+  RETURN ward;
 END; $$
 LANGUAGE 'plpgsql'
 
@@ -254,8 +246,6 @@ AS $$
 DECLARE
     ZONES VARCHAR ARRAY := ARRAY['NE', 'NC', 'NW', 'SW', 'SS', 'SE']
 BEGIN
-
-
 
 END; $$
 LANGUAGE 'plpgsql'
