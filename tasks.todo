@@ -1,0 +1,6 @@
+☐ complete buildPopTable function to create tables for each zone
+☐ create function to perform aggregations for state, lga and ward
+  using buildPopTable
+☐ create views using aggregation function above to expose aggregated
+  population data for states, lgas and wards per zone. HINT: looking
+  at creating 18 (3 views x 6 zones) views.
