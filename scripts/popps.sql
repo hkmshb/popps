@@ -23,7 +23,7 @@ BEGIN
 
     INSERT INTO zones (code, name)
     VALUES ('NE', 'North East'), ('NW', 'North West'), ('NC', 'North Central'),
-            ('SE', 'South East'), ('SW', 'South West'), ('SS', 'South South');
+           ('SE', 'South East'), ('SW', 'South West'), ('SS', 'South South');
   END IF
 
   SELECT COUNT(*) INTO rcount FROM zone_states;
