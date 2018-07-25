@@ -185,5 +185,37 @@ BEGIN
   LEFT JOIN fn_GetWardPopSummary(75, 100) as tbl75_100
     ON tbl70_74.globalid = tbl75_100.globalid;
 
+  -- FUNCTION: fn_BuildPopTables
+  CREATE OR REPLACE FUNCTION fn_BuildPopTables()
+  RETURNS INTEGER
+  AS $FN4$
+  DECLARE
+    table_name VARCHAR;
+    current_zone VARCHAR;
+    target_zones VARCHAR ARRAY := ARRAY['NE', 'NC', 'NW', 'SW', 'SE', 'SS'];
+  BEGIN
+    FOREACH current_zone IN ARRAY target_zones
+    LOOP
+      RAISE NOTICE 'About creating table for %', current_zone;
+      
+      -- get zone name
+      SELECT INTO table_name LOWER(REPLACE(name, ' ', '') || '_pop_settlement') 
+      FROM zones
+      WHERE code = current_zone;
+      RAISE NOTICE 'Zone full name: %', table_name;
+
+      -- create table
+      EXECUTE FORMAT('
+        CREATE TABLE IF NOT EXISTS %s AS
+          SELECT * FROM vsettlement_pop
+          WHERE ARRAY[wardcode] <@ fn_GetZoneWards(''%s'')
+        ', current_zone, current_zone
+      );
+      RAISE NOTICE 'Table created: %', table_name;
+    END LOOP;
+    RETURN 0;
+  END $FN4$
+  LANGUAGE 'plpgsql';
+
 
 END $$
