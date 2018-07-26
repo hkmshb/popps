@@ -186,20 +186,25 @@ BEGIN
     ON tbl70_74.globalid = tbl75_100.globalid;
 
   -- FUNCTION: fn_BuildPopTables
-  CREATE OR REPLACE FUNCTION fn_BuildPopTables()
+  CREATE OR REPLACE FUNCTION fn_BuildPopTableAndViewsPerZone()
   RETURNS INTEGER
   AS $FN4$
   DECLARE
     table_name VARCHAR;
     current_zone VARCHAR;
     target_zones VARCHAR ARRAY := ARRAY['NE', 'NC', 'NW', 'SW', 'SE', 'SS'];
+    colproj VARCHAR := '
+      SUM(pop1_4) "pop1_4", SUM(pop5_9) "pop5_9", SUM(pop10_14) "pop10_14", SUM(pop15_19) "pop15_19",
+      SUM(pop20_24) "pop20_24", SUM(pop25_29) "pop25_29", SUM(pop30_34) "pop30_34", SUM(pop35_39) "pop35_49",
+      SUM(pop50_54) "pop50_54", SUM(pop65_69) "pop65_69", SUM(pop70_74) "pop70_74", SUM(pop75_100) "pop75_100",
+      SUM(pop_total) "pop_total", geom';
   BEGIN
     FOREACH current_zone IN ARRAY target_zones
     LOOP
       RAISE NOTICE 'About creating table for %', current_zone;
       
       -- get zone name
-      SELECT INTO table_name LOWER(REPLACE(name, ' ', '') || '_pop_settlement') 
+      SELECT INTO table_name LOWER(REPLACE(name, ' ', ''))
       FROM zones
       WHERE code = current_zone;
       RAISE NOTICE 'Zone full name: %', table_name;
@@ -209,13 +214,43 @@ BEGIN
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT * FROM vsettlement_pop
           WHERE ARRAY[wardcode] <@ fn_GetZoneWards(''%s'')
-        ', current_zone, current_zone
+        ', (table_name || '_pop_settlement'), current_zone
       );
-      RAISE NOTICE 'Table created: %', table_name;
+      RAISE NOTICE 'Table created: %', (table_name || '_pop_settlement');
+
+      -- create views: ??_pop_ward
+      EXECUTE FORMAT('
+        CREATE TABLE IF NOT EXISTS %s AS
+          SELECT bw.globalid, bw.wardcode, bw.wardname, bw.lgacode, %s
+          FROM %s as "pt" JOIN grid_data.boundary_vaccwards as "bw"
+            ON pt.wardcode = bw.wardcode
+          GROUP BY bw.wardcode, bw.globalid, bw.wardname. bw.lgacode, bw.geom;
+      ', (table_name || '_pop_ward') , colproj, table_name);
+      RAISE NOTICE 'View created: %', (table_name || '_pop_ward');
+
+      -- create views: ??_pop_lga
+      EXECUTE FORMAT('
+        CREATE TABLE IF NOT EXISTS %s AS
+          SELECT bl.globalid, bl.lgacode, bl.lganame, bl.statecode, %s
+          FROM %s as "pt" JOIN grid_data.boundary_vacclgas as "bl"
+            ON pt.lgacode = bw.lgacode
+          GROUP BY bl.lgacode, bw.globalid, bl.lganame. bl.statecode, bl.geom;
+      ', (table_name || '_pop_lga') , colproj, table_name);
+      RAISE NOTICE 'View created: %', (table_name || '_pop_lga');
+
+      -- create views: ??_pop_state
+      EXECUTE FORMAT('
+        CREATE TABLE IF NOT EXISTS %s AS
+          SELECT bs.globalid, bs.statecode, bs.statename, %s
+          FROM %s as "pt" JOIN grid_data.boundary_vaccstates as "bs"
+            ON pt.statecode = bs.statecode
+          GROUP BY bs.globalid, bs.statename, bs.statecode, bs.geom;
+      ', (table_name || '_pop_state') , colproj, table_name);
+      RAISE NOTICE 'View created: %', (table_name || '_pop_state');
+
     END LOOP;
     RETURN 0;
   END $FN4$
   LANGUAGE 'plpgsql';
-
 
 END $$
