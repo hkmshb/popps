@@ -1,8 +1,8 @@
 -- ANONYMOUS BLOCK TO
 --  * CREATE ZONES TABLE
 
-CREATE SCHEMA IF NOT EXISTS vts_pop_t1;
-SET search_path=vts_pop_t1;
+--CREATE SCHEMA IF NOT EXISTS vts_pop_test;
+SET search_path=vts_pop_test;
 
 
 DO $$
@@ -78,16 +78,16 @@ BEGIN
     sourceTarget VARCHAR := 'Worldpop / ORNL NOT Adjusted';
   BEGIN
     RETURN QUERY SELECT
-        globalid,
-        wardcode,
-        (SUM(CASE WHEN gender='M' THEN value ELSE 0 END) +
-          SUM(CASE WHEN gender='F' THEN value ELSE 0 END)
+        vp.globalid,
+        vp.wardcode,
+        (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
+          SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
         ) as "popvalue"
-    FROM vts_popestimate
-    WHERE age_group_from = ageFROM
-    AND age_group_to = ageTo
-    AND source = sourceTarget
-    GROUP BY (globalid, featureidentifier, wardcode);
+    FROM vts_popestimate vp
+    WHERE vp.age_group_from = ageFROM
+    AND vp.age_group_to = ageTo
+    AND vp.source = sourceTarget
+    GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
   END $FN2$
   LANGUAGE 'plpgsql';
 
@@ -109,15 +109,15 @@ BEGIN
         pp.age40_44, pp.age45_49, pp.age50_54, pp.age55_59,
         pp.age60_64, pp.age65_69, pp.age70_100, pp.pop_total,
         pp.geom
-    FROM vsettlement_pop as pp
+    FROM settlement_pop as pp
     JOIN grid_data.settlements as fe
       ON pp.globalid = fe.globalid
     WHERE ARRAY[pp.ward_code] <@ fn_GetZoneWards(zoneName);
   END $FN3$
   LANGUAGE 'plpgsql';
 
-  -- VIEW: vsettlement_pop
-  CREATE OR REPLACE VIEW vsettlement_pop AS
+  -- TABLE: settlement_pop
+  CREATE TABLE IF NOT EXISTS settlement_pop AS
   SELECT
       tbl1_4.globalid,
       tbl1_4.wardcode,
@@ -186,7 +186,7 @@ BEGIN
     ON tbl70_74.globalid = tbl75_100.globalid;
 
   -- FUNCTION: fn_BuildPopTables
-  CREATE OR REPLACE FUNCTION fn_BuildPopTableAndViewsPerZone()
+  CREATE OR REPLACE FUNCTION fn_BuildPopTablesPerZone()
   RETURNS INTEGER
   AS $FN4$
   DECLARE
@@ -212,7 +212,7 @@ BEGIN
       -- create table
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT * FROM vsettlement_pop
+          SELECT * FROM settlement_pop
           WHERE ARRAY[wardcode] <@ fn_GetZoneWards(''%s'')
         ', (table_name || '_pop_settlement'), current_zone
       );
@@ -225,7 +225,7 @@ BEGIN
           FROM %s as "pt" JOIN grid_data.boundary_vaccwards as "bw"
             ON pt.wardcode = bw.wardcode
           GROUP BY bw.wardcode, bw.globalid, bw.wardname. bw.lgacode, bw.geom;
-      ', (table_name || '_pop_ward') , colproj, table_name);
+      ', (table_name || '_pop_ward') , colproj, table_name || '_pop_settlement');
       RAISE NOTICE 'View created: %', (table_name || '_pop_ward');
 
       -- create views: ??_pop_lga
@@ -235,7 +235,7 @@ BEGIN
           FROM %s as "pt" JOIN grid_data.boundary_vacclgas as "bl"
             ON pt.lgacode = bw.lgacode
           GROUP BY bl.lgacode, bw.globalid, bl.lganame. bl.statecode, bl.geom;
-      ', (table_name || '_pop_lga') , colproj, table_name);
+      ', (table_name || '_pop_lga') , colproj, table_name || '_pop_settlement');
       RAISE NOTICE 'View created: %', (table_name || '_pop_lga');
 
       -- create views: ??_pop_state
@@ -245,7 +245,7 @@ BEGIN
           FROM %s as "pt" JOIN grid_data.boundary_vaccstates as "bs"
             ON pt.statecode = bs.statecode
           GROUP BY bs.globalid, bs.statename, bs.statecode, bs.geom;
-      ', (table_name || '_pop_state') , colproj, table_name);
+      ', (table_name || '_pop_state') , colproj, table_name || '_pop_settlement');
       RAISE NOTICE 'View created: %', (table_name || '_pop_state');
 
     END LOOP;
