@@ -68,7 +68,7 @@ BEGIN
   LANGUAGE 'plpgsql';
 
   -- FUNCTION: fnGetWardPopSummary
-  CREATE OR REPLACE FUNCTION fn_GetWardPopSummary (ageFrom INTEGER, ageTo INTEGER, sourceTarget VARCHAR)
+  CREATE OR REPLACE FUNCTION fn_GetWardPopSummary (ageFrom INTEGER, ageTo INTEGER)
   RETURNS TABLE (
     globalid VARCHAR,
     wardcode VARCHAR,
@@ -83,9 +83,8 @@ BEGIN
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
-      FROM vts_popestimate vp
+      FROM vts_popestimate_slim vp
       WHERE vp.age_group_to <= ageTo
-      AND vp.source = sourceTarget
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
     ELSE
       RAISE NOTICE 'GetWardPopSummary for 5+';
@@ -95,10 +94,9 @@ BEGIN
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
-      FROM vts_popestimate vp
+      FROM vts_popestimate_slim vp
       WHERE vp.age_group_from = ageFROM
       AND vp.age_group_to = ageTo
-      AND vp.source = sourceTarget
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
     END IF;
   END $FN2$
