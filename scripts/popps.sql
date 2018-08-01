@@ -83,7 +83,7 @@ BEGIN
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
-      FROM vts_popestimate_slim vp
+      FROM vts_popestimate_adj vp
       WHERE vp.age_group_to <= ageTo
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
     ELSE
@@ -94,7 +94,7 @@ BEGIN
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
-      FROM vts_popestimate_slim vp
+      FROM vts_popestimate_adj vp
       WHERE vp.age_group_from = ageFROM
       AND vp.age_group_to = ageTo
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
@@ -128,7 +128,7 @@ BEGIN
   LANGUAGE 'plpgsql';
 
   -- TABLE: settlement_pop
-  CREATE OR REPLACE FUNCTION fn_CreateSettlementPopTable(sourceTarget VARCHAR)
+  CREATE OR REPLACE FUNCTION fn_CreateSettlementPopTable()
   RETURNS INTEGER AS $FF1$
   BEGIN
     CREATE TABLE IF NOT EXISTS settlement_pop AS
@@ -160,44 +160,46 @@ BEGIN
         COALESCE(tbl60_64.popvalue, 0.0) + COALESCE(tbl65_69.popvalue, 0.0) +
         COALESCE(tbl70_74.popvalue, 0.0) + COALESCE(tbl75_100.popvalue, 0.0)
         ) as "pop_total"
-    FROM fn_GetWardPopSummary(0, 4, sourceTarget) as tbl1_4
-    LEFT JOIN fn_GetWardPopSummary(5, 9, sourceTarget) as tbl5_9
+    FROM fn_GetWardPopSummary(0, 4) as tbl1_4
+    LEFT JOIN fn_GetWardPopSummary(5, 9) as tbl5_9
       ON tbl1_4.globalid = tbl5_9.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(10, 14, sourceTarget) as tbl10_14
+    LEFT JOIN fn_GetWardPopSummary(10, 14) as tbl10_14
       ON tbl5_9.globalid = tbl10_14.globalid
-    LEFT JOIN fn_GetWardPopSummary(15, 19, sourceTarget) as tbl15_19
+    LEFT JOIN fn_GetWardPopSummary(15, 19) as tbl15_19
       ON tbl10_14.globalid = tbl15_19.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(20, 24, sourceTarget) as tbl20_24
+    LEFT JOIN fn_GetWardPopSummary(20, 24) as tbl20_24
       ON tbl15_19.globalid = tbl20_24.globalid
-    LEFT JOIN fn_GetWardPopSummary(25, 29, sourceTarget) as tbl25_29
+    LEFT JOIN fn_GetWardPopSummary(25, 29) as tbl25_29
       ON tbl20_24.globalid = tbl25_29.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(30, 34, sourceTarget) as tbl30_34
+    LEFT JOIN fn_GetWardPopSummary(30, 34) as tbl30_34
       ON tbl25_29.globalid = tbl30_34.globalid
-    LEFT JOIN fn_GetWardPopSummary(35, 39, sourceTarget) as tbl35_39
+    LEFT JOIN fn_GetWardPopSummary(35, 39) as tbl35_39
       ON tbl30_34.globalid = tbl35_39.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(40, 44, sourceTarget) as tbl40_44
+    LEFT JOIN fn_GetWardPopSummary(40, 44) as tbl40_44
       ON tbl35_39.globalid = tbl40_44.globalid
-    LEFT JOIN fn_GetWardPopSummary(45, 49, sourceTarget) as tbl45_49
+    LEFT JOIN fn_GetWardPopSummary(45, 49) as tbl45_49
       ON tbl40_44.globalid = tbl45_49.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(50, 54, sourceTarget) as tbl50_54
+    LEFT JOIN fn_GetWardPopSummary(50, 54) as tbl50_54
       ON tbl45_49.globalid = tbl50_54.globalid
-    LEFT JOIN fn_GetWardPopSummary(55, 59, sourceTarget) as tbl55_59
+    LEFT JOIN fn_GetWardPopSummary(55, 59) as tbl55_59
       ON tbl50_54.globalid = tbl55_59.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(60, 64, sourceTarget) as tbl60_64
+    LEFT JOIN fn_GetWardPopSummary(60, 64) as tbl60_64
       ON tbl55_59.globalid = tbl60_64.globalid
-    LEFT JOIN fn_GetWardPopSummary(65, 69, sourceTarget) as tbl65_69
+    LEFT JOIN fn_GetWardPopSummary(65, 69) as tbl65_69
       ON tbl60_64.globalid = tbl65_69.globalid
 
-    LEFT JOIN fn_GetWardPopSummary(70, 74, sourceTarget) as tbl70_74
+    LEFT JOIN fn_GetWardPopSummary(70, 74) as tbl70_74
       ON tbl65_69.globalid = tbl70_74.globalid
-    LEFT JOIN fn_GetWardPopSummary(75, 100, sourceTarget) as tbl75_100
+    LEFT JOIN fn_GetWardPopSummary(75, 100) as tbl75_100
       ON tbl70_74.globalid = tbl75_100.globalid;
+
+    RETURN 0;
   END $FF1$
   LANGUAGE 'plpgsql';
 
