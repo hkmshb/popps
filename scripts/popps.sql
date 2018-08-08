@@ -86,7 +86,7 @@ BEGIN
   ) AS $FN2$
   BEGIN
     IF ageFROM = 0 AND ageTO = 4 THEN
-      RAISE NOTICE 'GetWardPopSummary for 0-4';
+      -- RAISE NOTICE 'GetWardPopSummary for 0-4';
       RETURN QUERY SELECT
           vp.globalid,
           vp.wardcode,
@@ -97,7 +97,7 @@ BEGIN
       WHERE vp.age_group_to <= ageTo
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
     ELSE
-      RAISE NOTICE 'GetWardPopSummary for 5+';
+      -- RAISE NOTICE 'GetWardPopSummary for 5+';
       RETURN QUERY SELECT
           vp.globalid,
           vp.wardcode,
@@ -141,6 +141,7 @@ BEGIN
   CREATE OR REPLACE FUNCTION fn_CreateSettlementPopTable()
   RETURNS INTEGER AS $FF1$
   BEGIN
+    RAISE NOTICE 'Creating the vts_settement_pop table ...';
     CREATE TABLE IF NOT EXISTS vts_settlement_pop AS
     SELECT
         tbl1_4.globalid,
@@ -209,6 +210,7 @@ BEGIN
     LEFT JOIN fn_GetWardPopSummary(75, 100) as tbl75_100
       ON tbl70_74.globalid = tbl75_100.globalid;
 
+    RAISE NOTICE 'done!';
     RETURN 0;
   END $FF1$
   LANGUAGE 'plpgsql';
@@ -239,15 +241,20 @@ BEGIN
       RAISE NOTICE 'Zone full name: %', table_name;
 
       -- create table
+      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_settlement');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT * FROM vts_settlement_pop
-          WHERE ARRAY[wardcode] <@ fn_GetZoneWards(''%s'')
+          SELECT sp.*, fe.settlementname
+          FROM vts_settlement_pop as sp
+          JOIN grid_data.settlements as fe
+            ON sp.globalid = fe.globalid::varchar
+          WHERE ARRAY[sp.wardcode] <@ fn_GetZoneWards(''%s'')
         ', (table_name || '_pop_settlement'), current_zone
       );
-      RAISE NOTICE 'Table created: %', (table_name || '_pop_settlement');
+      RAISE NOTICE 'done';
 
       -- create views: ??_pop_ward
+      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_ward');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.wardcode, b.wardname, b.lgacode, %s
@@ -255,9 +262,10 @@ BEGIN
             ON pt.wardcode = b.wardcode
           GROUP BY b.wardcode, b.globalid, b.wardname, b.lgacode, b.geom;
       ', (table_name || '_pop_ward') , colproj, table_name || '_pop_settlement');
-      RAISE NOTICE 'View created: %', (table_name || '_pop_ward');
+      RAISE NOTICE 'done!';
 
       -- create views: ??_pop_lga
+      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_lga');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.lgacode, b.lganame, b.statecode, %s
@@ -265,9 +273,10 @@ BEGIN
             ON pt.wardcode = b.wardcode
           GROUP BY b.lgacode, b.globalid, b.lganame, b.statecode, b.geom;
       ', (table_name || '_pop_lga') , colproj, table_name || '_pop_settlement');
-      RAISE NOTICE 'View created: %', (table_name || '_pop_lga');
+      RAISE NOTICE 'done!';
 
       -- create views: ??_pop_state
+      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_state');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.statecode, b.statename, %s
@@ -275,7 +284,7 @@ BEGIN
             ON pt.wardcode = b.wardcode
           GROUP BY b.globalid, b.statename, b.statecode, b.geom;
       ', (table_name || '_pop_state') , colproj, table_name || '_pop_settlement');
-      RAISE NOTICE 'View created: %', (table_name || '_pop_state');
+      RAISE NOTICE 'done!';
 
     END LOOP;
     RETURN 0;
@@ -284,9 +293,14 @@ BEGIN
 
   -- POPULATION DATA PROCESSING
   -- STEP 2: create restructured table
-  SELECT * FROM fn_CreateSettlementPopTable()
+  SELECT INTO rvalue * FROM fn_CreateSettlementPopTable();
 
   -- STEP 3: final step: create pop tables per zone
-  SELECT * FROM fn_CreatePopTablesPerZone()
+  SELECT INTO rvalue * FROM fn_CreatePopTablesPerZone();
 
 END $$
+
+-- script snippet
+-- CREATE SCHEMA vts_pop_temp;
+-- CREATE TABLE vts_pop_temp.vts_popestimate_adj AS
+-- SELECT * FROM vts_pop.vts_populationestimates_july;
