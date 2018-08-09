@@ -82,6 +82,8 @@ BEGIN
   RETURNS TABLE (
     globalid VARCHAR,
     wardcode VARCHAR,
+    source VARCHAR,
+    settlementname VARCHAR,
     popvalue FLOAT
   ) AS $FN2$
   BEGIN
@@ -90,10 +92,14 @@ BEGIN
       RETURN QUERY SELECT
           vp.globalid,
           vp.wardcode,
+          vp.source,
+          fe.settlementname,
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
       FROM vts_popestimate_adj vp
+      JOIN grid_data.settlements fe
+        ON vp.globalid = fe.globalid
       WHERE vp.age_group_to <= ageTo
       GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
     ELSE
