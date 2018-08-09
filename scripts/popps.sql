@@ -15,7 +15,8 @@ CREATE SCHEMA IF NOT EXISTS vts_pop_temp;
 SET search_path=vts_pop_temp;
 
 
-DO $$
+-- STEP 1: create functions
+DO $STEP1$
 DECLARE
   ZCOUNT CONSTANT INTEGER := 6;         -- zone count
   ZSCOUNT CONSTANT INTEGER := 37;       -- zone_state count
@@ -241,8 +242,9 @@ BEGIN
     target_zones VARCHAR ARRAY := ARRAY['NE', 'NC', 'NW', 'SW', 'SE', 'SS'];
     colproj VARCHAR := '
       SUM(pop1_4) "pop1_4", SUM(pop5_9) "pop5_9", SUM(pop10_14) "pop10_14", SUM(pop15_19) "pop15_19",
-      SUM(pop20_24) "pop20_24", SUM(pop25_29) "pop25_29", SUM(pop30_34) "pop30_34", SUM(pop35_39) "pop35_49",
-      SUM(pop50_54) "pop50_54", SUM(pop65_69) "pop65_69", SUM(pop70_74) "pop70_74", SUM(pop75_100) "pop75_100",
+      SUM(pop20_24) "pop20_24", SUM(pop25_29) "pop25_29", SUM(pop30_34) "pop30_34", SUM(pop35_39) "pop35_39",
+      SUM(pop40_44) "pop40_44", SUM(pop45_49) "pop45_49", SUM(pop50_54) "pop50_54", SUM(pop55_59) "pop55_59",
+      SUM(pop60_64) "pop60_64", SUM(pop65_69) "pop65_69", SUM(pop70_74) "pop70_74", SUM(pop75_100) "pop75_100",
       SUM(pop_total) "pop_total", geom';
   BEGIN
     FOREACH current_zone IN ARRAY target_zones
@@ -259,10 +261,8 @@ BEGIN
       RAISE NOTICE 'Creating Table: %', (table_name || '_pop_settlement');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT sp.*, fe.settlementname
+          SELECT sp.*
           FROM vts_settlement_pop as sp
-          JOIN grid_data.settlements as fe
-            ON sp.globalid = fe.globalid::varchar
           WHERE ARRAY[sp.wardcode] <@ fn_GetZoneWards(''%s'')
         ', (table_name || '_pop_settlement'), current_zone
       );
@@ -306,14 +306,24 @@ BEGIN
   END $FN4$
   LANGUAGE 'plpgsql';
 
-  -- POPULATION DATA PROCESSING
+END $STEP1$;
+
+-- POPULATION DATA PROCESSING
+DO $STEP2$
+DECLARE
+  rvalue2 INTEGER := 0;
+BEGIN
   -- STEP 2: create restructured table
-  SELECT INTO rvalue * FROM fn_CreateSettlementPopTable();
+  SELECT INTO rvalue2 * FROM fn_CreateSettlementPopTable();
+END $STEP2$;
 
+DO $STEP3$
+DECLARE
+  rvalue3 INTEGER := 0;
+BEGIN
   -- STEP 3: final step: create pop tables per zone
-  SELECT INTO rvalue * FROM fn_CreatePopTablesPerZone();
-
-END $$
+  SELECT INTO rvalue3 * FROM fn_CreatePopTablesPerZone();
+END $STEP3$
 
 -- ## script snippet
 -- CREATE SCHEMA vts_pop_temp;
