@@ -92,28 +92,34 @@ BEGIN
       RETURN QUERY SELECT
           vp.globalid,
           vp.wardcode,
-          vp.source,
-          fe.settlementname,
+          vp.source::varchar,
+          fe.settlementname::varchar,
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
       FROM vts_popestimate_adj vp
       JOIN grid_data.settlements fe
-        ON vp.globalid = fe.globalid
+        ON vp.globalid = fe.globalid::varchar
       WHERE vp.age_group_to <= ageTo
-      GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
+      GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode, 
+                vp.source, fe.settlementname);
     ELSE
       -- RAISE NOTICE 'GetWardPopSummary for 5+';
       RETURN QUERY SELECT
           vp.globalid,
           vp.wardcode,
+          vp.source::varchar,
+          fe.settlementname::varchar,
           (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
             SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
           ) as "popvalue"
       FROM vts_popestimate_adj vp
+      JOIN grid_data.settlements fe
+        ON vp.globalid = fe.globalid::varchar
       WHERE vp.age_group_from = ageFROM
       AND vp.age_group_to = ageTo
-      GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode);
+      GROUP BY (vp.globalid, vp.featureidentifier, vp.wardcode,
+                vp.source, fe.settlementname);
     END IF;
   END $FN2$
   LANGUAGE 'plpgsql';
@@ -309,7 +315,9 @@ BEGIN
 
 END $$
 
--- script snippet
+-- ## script snippet
 -- CREATE SCHEMA vts_pop_temp;
--- CREATE TABLE vts_pop_temp.vts_popestimate_adj AS
--- SELECT * FROM vts_pop.vts_populationestimates_july;
+-- CREATE TABLE vts_pop_temp.vts_popestimate_adj
+-- AS SELECT * 
+--    FROM vts_pop.vts_populationestimates_july
+--    WHERE source='Worldpop / ORNL Adjusted';
