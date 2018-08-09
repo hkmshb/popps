@@ -254,14 +254,14 @@ BEGIN
       RAISE NOTICE 'done';
 
       -- create views: ??_pop_ward
-      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_ward');
+      RAISE NOTICE 'Creating Table: %', (table_name || '_pop_wards');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.wardcode, b.wardname, b.lgacode, %s
           FROM %s as "pt" JOIN grid_data.boundaries as "b"
             ON pt.wardcode = b.wardcode
           GROUP BY b.wardcode, b.globalid, b.wardname, b.lgacode, b.geom;
-      ', (table_name || '_pop_ward') , colproj, table_name || '_pop_settlement');
+      ', (table_name || '_pop_wards') , colproj, table_name || '_pop_settlement');
       RAISE NOTICE 'done!';
 
       -- create views: ??_pop_lga
@@ -270,9 +270,9 @@ BEGIN
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.lgacode, b.lganame, b.statecode, %s
           FROM %s as "pt" JOIN grid_data.boundaries as "b"
-            ON pt.wardcode = b.wardcode
+            ON pt.lgacode = b.lgacode
           GROUP BY b.lgacode, b.globalid, b.lganame, b.statecode, b.geom;
-      ', (table_name || '_pop_lga') , colproj, table_name || '_pop_settlement');
+      ', (table_name || '_pop_lga') , colproj, table_name || '_pop_wards');
       RAISE NOTICE 'done!';
 
       -- create views: ??_pop_state
@@ -281,9 +281,9 @@ BEGIN
         CREATE TABLE IF NOT EXISTS %s AS
           SELECT b.globalid, b.statecode, b.statename, %s
           FROM %s as "pt" JOIN grid_data.boundaries as "b"
-            ON pt.wardcode = b.wardcode
+            ON pt.statecode = b.statecode
           GROUP BY b.globalid, b.statename, b.statecode, b.geom;
-      ', (table_name || '_pop_state') , colproj, table_name || '_pop_settlement');
+      ', (table_name || '_pop_state') , colproj, table_name || '_pop_lga');
       RAISE NOTICE 'done!';
 
     END LOOP;
