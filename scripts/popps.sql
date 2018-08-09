@@ -151,7 +151,10 @@ BEGIN
     CREATE TABLE IF NOT EXISTS vts_settlement_pop AS
     SELECT
         tbl1_4.globalid,
+        tbl1_4.settlementname,
         tbl1_4.wardcode,
+        tbl1_4.source,
+        NOW() as "timestamp",
         tbl1_4.popvalue as "pop1_4",
         tbl5_9.popvalue as "pop5_9",
         tbl10_14.popvalue as "pop10_14",
