@@ -24,12 +24,14 @@ DECLARE
 BEGIN
 
   -- TABLE: zones
+  RAISE NOTICE 'Creating Table: zones';
   CREATE TABLE IF NOT EXISTS zones (
       code VARCHAR(2) PRIMARY KEY
     , name VARCHAR(15) UNIQUE NOT NULL
   );
 
   -- TABLE: zone_states table
+  RAISE NOTICE 'Creating Table: zone_states';
   CREATE TABLE IF NOT EXISTS zone_states (
       zone_code VARCHAR(2) REFERENCES zones(code)
     , state_code VARCHAR(2)
@@ -41,6 +43,7 @@ BEGIN
   IF rvalue != ZCOUNT THEN
     TRUNCATE TABLE zones CASCADE;
 
+    RAISE NOTICE 'Inserting records for zones';
     INSERT INTO zones (code, name)
     VALUES ('NE', 'North East'), ('NW', 'North West'), ('NC', 'North Central'),
            ('SE', 'South East'), ('SW', 'South West'), ('SS', 'South South');
@@ -50,6 +53,7 @@ BEGIN
   IF rvalue != ZSCOUNT THEN
     TRUNCATE TABLE zone_states;
 
+    RAISE NOTICE 'Inserting records for zone_states';
     INSERT INTO zone_states (zone_code, state_code)
     VALUES ('NE', 'AD'), ('NE', 'BA'), ('NE', 'BO'), ('NE', 'GO'), ('NE', 'TA'), ('NE', 'YO'),
            ('NW', 'JI'), ('NW', 'KD'), ('NW', 'KN'), ('NW', 'KT'), ('NW', 'KB'), ('NW', 'SO'), ('NW', 'ZM'),
@@ -60,6 +64,7 @@ BEGIN
   END IF;
 
   -- FUNCTION: fn_GetZoneWards
+  RAISE NOTICE 'Creating Function: fn_GetZoneWards ...';
   CREATE OR REPLACE FUNCTION fn_GetZoneWards (zoneCode VARCHAR)
   RETURNS VARCHAR ARRAY AS $FN1$
   DECLARE
@@ -79,13 +84,14 @@ BEGIN
   LANGUAGE 'plpgsql';
 
   -- FUNCTION: fnGetWardPopSummary
+  RAISE NOTICE 'Creating Function: fn_GetWardPopSummary ...';
   CREATE OR REPLACE FUNCTION fn_GetWardPopSummary (ageFrom INTEGER, ageTo INTEGER)
   RETURNS TABLE (
     globalid VARCHAR,
     wardcode VARCHAR,
     source VARCHAR,
     settlementname VARCHAR,
-    popvalue FLOAT
+    popvalue INTEGER
   ) AS $FN2$
   BEGIN
     IF ageFROM = 0 AND ageTO = 4 THEN
@@ -95,9 +101,9 @@ BEGIN
           vp.wardcode,
           vp.source::varchar,
           fe.settlementname::varchar,
-          (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
-            SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
-          ) as "popvalue"
+          CAST((SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
+                SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
+               ) AS INTEGER) as "popvalue"
       FROM vts_popestimate_adj vp
       JOIN grid_data.settlements fe
         ON vp.globalid = fe.globalid::varchar
@@ -111,9 +117,9 @@ BEGIN
           vp.wardcode,
           vp.source::varchar,
           fe.settlementname::varchar,
-          (SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
-            SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
-          ) as "popvalue"
+          CAST((SUM(CASE WHEN vp.gender='M' THEN value ELSE 0 END) +
+                SUM(CASE WHEN vp.gender='F' THEN value ELSE 0 END)
+               ) AS INTEGER) as "popvalue"
       FROM vts_popestimate_adj vp
       JOIN grid_data.settlements fe
         ON vp.globalid = fe.globalid::varchar
@@ -126,13 +132,14 @@ BEGIN
   LANGUAGE 'plpgsql';
 
    -- FUNCTON: getSettlementPopByZone
+  RAISE NOTICE 'Creating Function: fn_GetSettlementPopByZone ...';
   CREATE OR REPLACE FUNCTION fn_GetSettlementPopByZone(zoneName VARCHAR)
   RETURNS TABLE (
     globalid VARCHAR, settlement_name VARCHAR, ward_code VARCHAR,
-    pop1_4 FLOAT,   pop5_9 FLOAT,   pop10_14 FLOAT, pop15_19 FLOAT,
-    pop20_24 FLOAT, pop25_29 FLOAT, pop30_34 FLOAT, pop35_39 FLOAT,
-    pop40_44 FLOAT, pop45_49 FLOAT, pop50_54 FLOAT, pop55_59 FLOAT,
-    pop60_64 FLOAT, pop65_69 FLOAT, pop70_100 FLOAT, pop_total FLOAT,
+    pop1_4 INTEGER,   pop5_9 INTEGER,   pop10_14 INTEGER, pop15_19 INTEGER,
+    pop20_24 INTEGER, pop25_29 INTEGER, pop30_34 INTEGER, pop35_39 INTEGER,
+    pop40_44 INTEGER, pop45_49 INTEGER, pop50_54 INTEGER, pop55_59 INTEGER,
+    pop60_64 INTEGER, pop65_69 INTEGER, pop70_100 INTEGER, pop_total INTEGER,
     geom public.GEOMETRY(MultiPolygon,4326)
   ) AS $FN3$
   BEGIN
@@ -151,8 +158,9 @@ BEGIN
   LANGUAGE 'plpgsql';
 
   -- TABLE: vts_settlement_pop
+  RAISE NOTICE 'Creating Function: fn_CreateSettlementPopTable ...';
   CREATE OR REPLACE FUNCTION fn_CreateSettlementPopTable()
-  RETURNS INTEGER AS $FF1$
+  RETURNS INTEGER AS $FN4$
   BEGIN
     RAISE NOTICE 'Creating the vts_settement_pop table ...';
     CREATE TABLE IF NOT EXISTS vts_settlement_pop AS
@@ -228,24 +236,25 @@ BEGIN
 
     RAISE NOTICE 'done!';
     RETURN 0;
-  END $FF1$
+  END $FN4$
   LANGUAGE 'plpgsql';
 
-  -- FUNCTION: fn_BuildPopTables
+  -- FUNCTION: fn_CreatePopTablesPerZone
+  RAISE NOTICE 'Creating Function: fn_CreatePopTablesPerZone ...';
   CREATE OR REPLACE FUNCTION fn_CreatePopTablesPerZone()
   RETURNS INTEGER
-  AS $FN4$
+  AS $FN5$
   DECLARE
     table_name VARCHAR;
     current_zone VARCHAR;
-    -- target_zones VARCHAR ARRAY := ARRAY['NE', 'NC'];
+    -- target_zones VARCHAR ARRAY := ARRAY['NE'];
     target_zones VARCHAR ARRAY := ARRAY['NE', 'NC', 'NW', 'SW', 'SE', 'SS'];
     colproj VARCHAR := '
       SUM(pop1_4) "pop1_4", SUM(pop5_9) "pop5_9", SUM(pop10_14) "pop10_14", SUM(pop15_19) "pop15_19",
       SUM(pop20_24) "pop20_24", SUM(pop25_29) "pop25_29", SUM(pop30_34) "pop30_34", SUM(pop35_39) "pop35_39",
       SUM(pop40_44) "pop40_44", SUM(pop45_49) "pop45_49", SUM(pop50_54) "pop50_54", SUM(pop55_59) "pop55_59",
       SUM(pop60_64) "pop60_64", SUM(pop65_69) "pop65_69", SUM(pop70_74) "pop70_74", SUM(pop75_100) "pop75_100",
-      SUM(pop_total) "pop_total", geom';
+      SUM(pop_total) "pop_total"';
   BEGIN
     FOREACH current_zone IN ARRAY target_zones
     LOOP
@@ -261,8 +270,10 @@ BEGIN
       RAISE NOTICE 'Creating Table: %', (table_name || '_pop_settlement');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT sp.*
+          SELECT sp.*, fe.geom
           FROM vts_settlement_pop as sp
+          JOIN grid_data.settlements fe
+            ON sp.globalid = fe.globalid::varchar
           WHERE ARRAY[sp.wardcode] <@ fn_GetZoneWards(''%s'')
         ', (table_name || '_pop_settlement'), current_zone
       );
@@ -272,8 +283,9 @@ BEGIN
       RAISE NOTICE 'Creating Table: %', (table_name || '_pop_wards');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT b.globalid, b.wardcode, b.wardname, b.lgacode, %s
-          FROM %s as "pt" JOIN grid_data.boundaries as "b"
+          SELECT b.globalid, b.wardcode, b.wardname, b.lgacode, 
+                 b.source, b.timestamp, %s, b.geom
+          FROM %s as "pt" JOIN boundary_vaccwards as "b"
             ON pt.wardcode = b.wardcode
           GROUP BY b.wardcode, b.globalid, b.wardname, b.lgacode, b.geom;
       ', (table_name || '_pop_wards') , colproj, table_name || '_pop_settlement');
@@ -283,8 +295,9 @@ BEGIN
       RAISE NOTICE 'Creating Table: %', (table_name || '_pop_lga');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT b.globalid, b.lgacode, b.lganame, b.statecode, %s
-          FROM %s as "pt" JOIN grid_data.boundaries as "b"
+          SELECT b.globalid, b.lgacode, b.lganame, b.statecode,
+                 b.source, b.timestamp, %s, b.geom
+          FROM %s as "pt" JOIN boundary_vacclgas as "b"
             ON pt.lgacode = b.lgacode
           GROUP BY b.lgacode, b.globalid, b.lganame, b.statecode, b.geom;
       ', (table_name || '_pop_lga') , colproj, table_name || '_pop_wards');
@@ -294,8 +307,9 @@ BEGIN
       RAISE NOTICE 'Creating Table: %', (table_name || '_pop_state');
       EXECUTE FORMAT('
         CREATE TABLE IF NOT EXISTS %s AS
-          SELECT b.globalid, b.statecode, b.statename, %s
-          FROM %s as "pt" JOIN grid_data.boundaries as "b"
+          SELECT b.globalid, b.statecode, b.statename, 
+                 b.source, b.timestamp, %s, b.geom
+          FROM %s as "pt" JOIN boundary_vaccstates as "b"
             ON pt.statecode = b.statecode
           GROUP BY b.globalid, b.statename, b.statecode, b.geom;
       ', (table_name || '_pop_state') , colproj, table_name || '_pop_lga');
@@ -303,10 +317,27 @@ BEGIN
 
     END LOOP;
     RETURN 0;
-  END $FN4$
+  END $FN5$
   LANGUAGE 'plpgsql';
 
 END $STEP1$;
+
+DO $STEP1_1$
+BEGIN
+  -- REPLICATE BOUNDARY TABLES
+  RAISE NOTICE 'Replicating Table: boundary_vaccstates ...';
+  CREATE TABLE IF NOT EXISTS boundary_vaccstates
+  AS SELECT * FROM grid_data.boundary_vaccstates;
+
+  RAISE NOTICE 'Replicating Table: boundary_vacclgas ...';
+  CREATE TABLE IF NOT EXISTS boundary_vacclgas
+  AS SELECT * FROM grid_data.boundary_vacclgas;
+
+  RAISE NOTICE 'Replicating Table: boundary_vaccwards ...';
+  CREATE TABLE IF NOT EXISTS boundary_vaccwards
+  AS SELECT * FROM grid_data.boundary_vaccwards;
+  RAISE NOTICE 'Replications complete ...';
+END $STEP1_1$;
 
 -- POPULATION DATA PROCESSING
 DO $STEP2$
@@ -331,3 +362,13 @@ END $STEP3$
 -- AS SELECT * 
 --    FROM vts_pop.vts_populationestimates_july
 --    WHERE source='Worldpop / ORNL Adjusted';
+
+
+-- ## script snippet: purger
+-- SET search_path=vts_pop_temp;
+-- DROP TABLE zones, zone_states, vts_settlement_pop CASCADE;
+-- DROP FUNCTION fn_GetZoneWards(VARCHAR); 
+-- DROP FUNCTION fn_GetWardPopSummary(INTEGER, INTEGER);
+-- DROP FUNCTION fn_GetSettlementPopByZone(VARCHAR);
+-- DROP FUNCTION fn_CreateSettlementPopTable();
+-- DROP FUNCTION fn_CreatePopTablesPerZone();
